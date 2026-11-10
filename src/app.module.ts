@@ -3,9 +3,9 @@ import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './auth/auth.module.js';
-import { ChatModule } from './chat/chat.module.js';
-import { ChatGateway } from './chat/chat.gateway.js';
+import { AuthModule } from './modules/auth/auth.module.js';
+import { ChatModule } from './modules/chat/chat.module.js';
+import { ChatGateway } from './modules/chat/chat.gateway.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
