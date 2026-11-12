@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ChatModule } from './modules/chat/chat.module.js';
 import { ChatGateway } from './modules/chat/chat.gateway.js';
+import { PrismaModule } from './database/prisma.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -19,7 +20,10 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       appSecret: process.env.OBSERVE_APP_SECRET ?? 'YOUR_APP_SECRET',
       serviceId: 'crm_api',
     }),
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    PrismaModule,
     AuthModule,
     ChatModule,
   ],
