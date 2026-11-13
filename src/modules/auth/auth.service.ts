@@ -2,10 +2,12 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -27,6 +29,17 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
+    // Find default role
+    const defaultRole = await this.prisma.role.findUnique({
+      where: { name: 'User' },
+    });
+
+    if (!defaultRole) {
+      throw new InternalServerErrorException(
+        'Default User role has not been configured',
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, 12);
 
     const user = await this.prisma.user.create({
@@ -34,12 +47,21 @@ export class AuthService {
         name: dto.name,
         email: dto.email,
         hashPassword: hashedPassword,
+        role: {
+          connect: { id: defaultRole.id },
+        },
       },
       select: {
         id: true,
         name: true,
         email: true,
         createdAt: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -53,6 +75,17 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -72,12 +105,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // JWT payload
     const payload = {
       sub: user.id,
       email: user.email,
     };
 
     const accessToken = await this.jwtService.signAsync(payload);
+
+    // Extract permissions
+    const permissions = user.role.permissions.map(
+      (item) => item.permission.slug,
+    );
 
     return {
       message: 'Login successful',
@@ -87,6 +126,11 @@ export class AuthService {
           id: user.id,
           name: user.name,
           email: user.email,
+          role: {
+            id: user.role.id,
+            name: user.role.name,
+          },
+          permissions,
         },
       },
     };

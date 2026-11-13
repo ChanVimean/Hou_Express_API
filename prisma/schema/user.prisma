@@ -1,0 +1,17 @@
+model User {
+  id           String  @id @default(uuid()) @db.Char(36)
+  name         String  @db.VarChar(100)
+  email        String  @unique @db.VarChar(100)
+  hashPassword String  @map("hash_password") @db.VarChar(255)
+  status       Int     @default(1) @db.TinyInt
+  phone        String? @db.VarChar(20)
+
+  roleId String @map("role_id") @db.Char(36)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  @@index([roleId])
+  @@map("users")
+}
