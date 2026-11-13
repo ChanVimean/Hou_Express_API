@@ -1,0 +1,11 @@
+model ProductAttributeValue {
+  productId   String @db.Char(36)
+  attributeId String @db.Char(36)
+  value       String @db.Text
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Restrict)
+
+  @@id([productId, attributeId])
+  @@index([attributeId])
+}

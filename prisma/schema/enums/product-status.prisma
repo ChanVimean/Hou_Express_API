@@ -1,0 +1,6 @@
+enum ProductStatus {
+  DRAFT // DRAFT    - Product is being created and is not publicly visible.
+  ACTIVE // ACTIVE   - Product is published and available for customers to view.
+  INACTIVE // INACTIVE - Product is temporarily hidden from customers.
+  ARCHIVED // ARCHIVED - Product is retired and no longer intended for sale.
+}

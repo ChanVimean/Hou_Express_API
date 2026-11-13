@@ -1,0 +1,14 @@
+model AttributeValue {
+  id          String @id @default(uuid()) @db.Char(36)
+  attributeId String @db.Char(36)
+  value       String @db.VarChar(191)
+
+  attribute Attribute @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+
+  variantAttributeValues VariantAttributeValue[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([attributeId, value])
+  @@index([attributeId])
+}

@@ -1,0 +1,10 @@
+model VariantAttributeValue {
+  variantId        String @db.Char(36)
+  attributeValueId String @db.Char(36)
+
+  variant        ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  attributeValue AttributeValue @relation(fields: [attributeValueId], references: [id], onDelete: Restrict)
+
+  @@id([variantId, attributeValueId])
+  @@index([attributeValueId])
+}

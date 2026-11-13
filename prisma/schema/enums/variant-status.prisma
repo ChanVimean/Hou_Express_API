@@ -1,0 +1,4 @@
+enum VariantStatus {
+  ACTIVE // ACTIVE   - Variant is enabled for purchase.
+  INACTIVE // INACTIVE - Variant is disabled and cannot be purchased.
+}

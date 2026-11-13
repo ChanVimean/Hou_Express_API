@@ -1,0 +1,17 @@
+model Category {
+  id       String  @id @default(uuid()) @db.Char(36)
+  name     String  @db.VarChar(191)
+  slug     String  @unique @db.VarChar(191)
+  parentId String? @db.Char(36)
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryTree")
+
+  products           Product[]
+  categoryAttributes CategoryAttribute[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+}
