@@ -59,8 +59,11 @@ src/
 │       ├── orders.repository.ts
 │       └── dto/
 ├── prisma/
-│   ├── schema.prisma
-│   └── migrations/
+│   ├── migration/
+│   ├── schema/
+│   │   ├── schema/
+│   │   └── enum/
+│   └── schema.prisma
 │
 ├──prisma.config.ts
 ├──.env
