@@ -1,0 +1,22 @@
+enum TicketStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TicketPriority {
+  NORMAL
+  URGENT
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum TicketHistoryAction {
+  SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}

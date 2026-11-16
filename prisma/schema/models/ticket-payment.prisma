@@ -1,0 +1,13 @@
+model TicketPayment {
+  id        Int           @id @default(autoincrement())
+  ticketId  Int           @unique @map("ticket_id")
+  status    PaymentStatus @default(UNPAID)
+  paidBy    String?       @map("paid_by") @db.Char(36) // Plain foreign key reference to users.id
+  paidAt    DateTime?     @map("paid_at")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_payments")
+}

@@ -8,6 +8,7 @@ import { ChatModule } from './modules/chat/chat.module.js';
 import { ChatGateway } from './modules/chat/chat.gateway.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
+import { TicketsModule } from './modules/tickets/tickets.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -28,6 +29,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     AuthModule,
     ChatModule,
     ProductsModule,
+    TicketsModule,
   ],
   controllers: [AppController],
   providers: [AppService, ChatGateway],
