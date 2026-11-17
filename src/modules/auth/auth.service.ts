@@ -25,9 +25,7 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (existingUser) {
-      throw new ConflictException('Email already registered');
-    }
+    if (existingUser) throw new ConflictException('Email already registered');
 
     // Find default role
     const defaultRole = await this.prisma.role.findUnique({
@@ -72,6 +70,7 @@ export class AuthService {
   }
 
   // LOGIN
+
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -88,51 +87,57 @@ export class AuthService {
       },
     });
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
+    if (!user) throw new UnauthorizedException('Invalid email or password');
 
-    if (user.status !== 1) {
+    if (user.status !== 1)
       throw new UnauthorizedException('Account is inactive');
-    }
 
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       user.hashPassword,
     );
 
-    if (!isPasswordValid) {
+    if (!isPasswordValid)
       throw new UnauthorizedException('Invalid email or password');
-    }
 
-    // JWT payload
     const payload = {
       sub: user.id,
       email: user.email,
     };
 
-    const accessToken = await this.jwtService.signAsync(payload);
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload, {
+        secret: process.env.JWT_ACCESS_SECRET,
+        expiresIn: '15m',
+      }),
+      this.jwtService.signAsync(payload, {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: '7d',
+      }),
+    ]);
 
-    // Extract permissions
     const permissions = user.role.permissions.map(
       (item) => item.permission.slug,
     );
 
     return {
-      message: 'Login successful',
-      data: {
-        accessToken,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: {
-            id: user.role.id,
-            name: user.role.name,
-          },
-          permissions,
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: {
+          id: user.role.id,
+          name: user.role.name,
         },
+        permissions,
       },
     };
+  }
+
+  // LOGOUT
+  async logout(userId: string) {
+    return { message: 'Logout successful.' };
   }
 }
