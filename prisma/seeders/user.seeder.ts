@@ -7,77 +7,95 @@ export async function seedUsers(prisma: PrismaClient) {
   try {
     const hashedPassword = await bcrypt.hash('Password123!', 10);
 
-    // 1. Ensure default roles exist first
-    const adminRole = await prisma.role.upsert({
-      where: { name: 'ADMIN' },
-      update: {},
-      create: { name: 'ADMIN' },
-    });
+    const roles = [
+      'ADMIN',
+      'EMPLOYEE',
+      'STAFF',
+      'SUPERVISOR',
+      'MANAGER',
+      'CEO',
+    ];
 
-    const staffRole = await prisma.role.upsert({
-      where: { name: 'STAFF' },
-      update: {},
-      create: { name: 'STAFF' },
-    });
+    const roleRecords = await Promise.all(
+      roles.map((name) =>
+        prisma.role.upsert({
+          where: { name },
+          update: {},
+          create: { name },
+        }),
+      ),
+    );
 
-    // 2. Define users (mapping hashedPassword -> hashPassword field)
+    const roleMap = Object.fromEntries(
+      roleRecords.map((role) => [role.name, role.id]),
+    );
+
     const usersToSeed = [
       {
         email: 'admin@gmail.com',
         name: 'System Admin',
-        hashPassword: hashedPassword,
-        status: 1,
-        roleId: adminRole.id,
-        roleName: adminRole.name,
+        role: 'ADMIN',
+      },
+      {
+        email: 'employee@gmail.com',
+        name: 'Test Employee',
+        role: 'EMPLOYEE',
       },
       {
         email: 'staff@gmail.com',
-        name: 'Staff Requester',
-        hashPassword: hashedPassword,
-        status: 1,
-        roleId: staffRole.id,
-        roleName: staffRole.name,
+        name: 'Test Staff',
+        role: 'STAFF',
+      },
+      {
+        email: 'supervisor@gmail.com',
+        name: 'Test Supervisor',
+        role: 'SUPERVISOR',
+      },
+      {
+        email: 'manager@gmail.com',
+        name: 'Test Manager',
+        role: 'MANAGER',
+      },
+      {
+        email: 'ceo@gmail.com',
+        name: 'Test CEO',
+        role: 'CEO',
       },
     ];
 
-    const seededResults: Array<{
-      id: string;
-      name: string;
-      email: string;
-      role: string;
-    }> = [];
+    const seededResults = [];
 
-    for (const { roleName, ...userData } of usersToSeed) {
+    for (const user of usersToSeed) {
+      const { role, ...userData } = user;
+
       const existing = await prisma.user.findUnique({
-        where: { email: userData.email },
+        where: { email: user.email },
       });
 
-      if (existing) {
-        console.warn(
-          `User already exists, skipping creation: ${userData.email}`,
-        );
-        seededResults.push({
-          id: existing.id,
-          name: existing.name,
-          email: existing.email,
-          role: roleName,
-        });
-        continue;
-      }
-
-      const created = await prisma.user.create({
-        data: userData,
-      });
+      const savedUser = existing
+        ? await prisma.user.update({
+            where: { email: user.email },
+            data: {
+              roleId: roleMap[role],
+            },
+          })
+        : await prisma.user.create({
+            data: {
+              ...userData,
+              hashPassword: hashedPassword,
+              status: 1,
+              roleId: roleMap[role],
+            },
+          });
 
       seededResults.push({
-        id: created.id,
-        name: created.name,
-        email: created.email,
-        role: roleName,
+        id: savedUser.id,
+        name: savedUser.name,
+        email: savedUser.email,
+        role,
       });
     }
 
-    // Print a clean table of IDs ready to copy-paste into Postman
     console.table(seededResults);
   } catch (error) {
     console.error('Failed while seeding users:', error);

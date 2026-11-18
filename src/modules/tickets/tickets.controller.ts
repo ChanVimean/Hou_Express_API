@@ -10,26 +10,25 @@ import {
 import { TicketsService } from './tickets.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto.js';
-import { TicketFilterDto } from './dto/ticket-filter.dto.js';
 import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 
 @Controller('tickets')
 export class TicketsController {
   constructor(private readonly ticketService: TicketsService) {}
 
+  @Get()
+  async findAllTicket(@Query() query: GetTicketsQueryDto) {
+    return this.ticketService.findAllTickets(query);
+  }
+
   @Post('create')
-  async create(@Body() createTicketDto: CreateTicketDto) {
-    return this.ticketService.create(createTicketDto);
+  async createTicket(@Body() createTicketDto: CreateTicketDto) {
+    return this.ticketService.createTicket(createTicketDto);
   }
 
-  @Get('')
-  async findAll(@Query() query: GetTicketsQueryDto) {
-    return this.ticketService.findAll(query);
-  }
-
-  @Get('open')
-  async getOpenTickets() {
-    return this.ticketService.findAllOpen();
+  @Get('category')
+  async findAllCategory() {
+    return this.ticketService.findAllCategory();
   }
 
   @Patch(':id/status')
@@ -38,10 +37,5 @@ export class TicketsController {
     @Body() updateStatusDto: UpdateTicketStatusDto,
   ) {
     return this.ticketService.updateStatus(Number(id), updateStatusDto);
-  }
-
-  @Get('history')
-  async getFilteredTickets(@Query() filters: TicketFilterDto) {
-    return this.ticketService.findFiltered(filters);
   }
 }

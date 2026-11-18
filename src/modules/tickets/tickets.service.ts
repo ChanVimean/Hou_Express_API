@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto.js';
-import { TicketFilterDto } from './dto/ticket-filter.dto.js';
 import {
   Prisma,
   TicketHistoryAction,
@@ -15,8 +14,78 @@ import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 export class TicketsService {
   constructor(private prisma: PrismaService) {}
 
+  // --- Paginated Get All ---
+  async findAllTickets(query: GetTicketsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TicketWhereInput = {};
+
+    // Filter by status
+    if (query.status) where.status = query.status;
+
+    // Filter by priority
+    if (query.priority) where.priority = query.priority;
+
+    // Search tickets
+    if (query.search?.trim()) {
+      const search = query.search.trim();
+
+      where.OR = [
+        { ticketNumber: { contains: search } },
+        { description: { contains: search } },
+        {
+          requester: {
+            is: {
+              name: { contains: search },
+            },
+          },
+        },
+        {
+          category: {
+            is: {
+              name: { contains: search },
+            },
+          },
+        },
+      ];
+    }
+
+    // Run query and total count in parallel
+    const [tickets, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          category: true,
+          requester: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          payment: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return {
+      data: tickets,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   // --- Create new ticket ---
-  async create(dto: CreateTicketDto) {
+  async createTicket(dto: CreateTicketDto) {
     // 1. Generate a unique human-readable ticket number
     const ticketNumber = `TICK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -52,60 +121,17 @@ export class TicketsService {
     });
   }
 
-  // --- Paginated Get All ---
-  async findAll(query: GetTicketsQueryDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.TicketWhereInput = {};
-
-    if (query.status) where.status = query.status;
-
-    // Run query and total count in parallel for performance
-    const [tickets, total] = await Promise.all([
-      this.prisma.ticket.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          category: true,
-          requester: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          payment: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.ticket.count({ where }),
-    ]);
-
-    return {
-      data: tickets,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  }
-
-  async findAllOpen() {
-    // TODO: Implement fetch open tickets logic
-    return { message: 'Find all open tickets shell stub' };
-  }
-
+  // --- Update ticket Status ---
   async updateStatus(id: number, dto: UpdateTicketStatusDto) {
     // TODO: Implement status update / pop-up action logic
     return { message: `Update status shell stub for ticket ${id}` };
   }
 
-  async findFiltered(filters: TicketFilterDto) {
-    // TODO: Implement filtered view and print logic
-    return { message: 'Filtered tickets shell stub', filters };
+  // --- Finna all Category ---
+  async findAllCategory() {
+    return this.prisma.ticketCategory.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' },
+    });
   }
 }

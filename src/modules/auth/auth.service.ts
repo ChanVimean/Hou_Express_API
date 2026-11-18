@@ -140,4 +140,32 @@ export class AuthService {
   async logout(userId: string) {
     return { message: 'Logout successful.' };
   }
+
+  // ME
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        role: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!user) throw new UnauthorizedException('User not found');
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      status: user.status,
+      role: user.role.name,
+    };
+  }
 }
