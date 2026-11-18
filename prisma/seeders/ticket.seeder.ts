@@ -12,11 +12,11 @@ export async function seedTickets(prisma: PrismaClient) {
   try {
     // 1. Fetch prerequisite records (users and categories) to link foreign keys
     const staffUser = await prisma.user.findFirst({
-      where: { email: 'staff@example.com' },
+      where: { email: 'staff@gmail.com' },
     });
 
     const adminUser = await prisma.user.findFirst({
-      where: { email: 'admin@example.com' },
+      where: { email: 'admin@gmail.com' },
     });
 
     const category = await prisma.ticketCategory.findFirst({

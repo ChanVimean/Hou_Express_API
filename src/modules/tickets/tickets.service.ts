@@ -4,6 +4,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto.js';
 import { TicketFilterDto } from './dto/ticket-filter.dto.js';
 import {
+  Prisma,
   TicketHistoryAction,
   TicketPriority,
   TicketStatus,
@@ -14,6 +15,7 @@ import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 export class TicketsService {
   constructor(private prisma: PrismaService) {}
 
+  // --- Create new ticket ---
   async create(dto: CreateTicketDto) {
     // 1. Generate a unique human-readable ticket number
     const ticketNumber = `TICK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -50,16 +52,15 @@ export class TicketsService {
     });
   }
 
-  // --- NEW: Paginated Get All ---
+  // --- Paginated Get All ---
   async findAll(query: GetTicketsQueryDto) {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (query.status) {
-      where.status = query.status;
-    }
+    const where: Prisma.TicketWhereInput = {};
+
+    if (query.status) where.status = query.status;
 
     // Run query and total count in parallel for performance
     const [tickets, total] = await Promise.all([
@@ -68,8 +69,14 @@ export class TicketsService {
         skip,
         take: limit,
         include: {
-          category: true, // Includes category details
-          payment: true, // Includes payment status if exists
+          category: true,
+          requester: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          payment: true,
         },
         orderBy: { createdAt: 'desc' },
       }),

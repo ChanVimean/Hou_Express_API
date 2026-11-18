@@ -17,12 +17,12 @@ import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 export class TicketsController {
   constructor(private readonly ticketService: TicketsService) {}
 
-  @Post()
+  @Post('create')
   async create(@Body() createTicketDto: CreateTicketDto) {
     return this.ticketService.create(createTicketDto);
   }
 
-  @Get()
+  @Get('')
   async findAll(@Query() query: GetTicketsQueryDto) {
     return this.ticketService.findAll(query);
   }
