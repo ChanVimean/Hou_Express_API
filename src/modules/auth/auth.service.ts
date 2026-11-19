@@ -4,10 +4,8 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
-
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -103,6 +101,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
+      role: user.role.name,
     };
 
     const [accessToken, refreshToken] = await Promise.all([

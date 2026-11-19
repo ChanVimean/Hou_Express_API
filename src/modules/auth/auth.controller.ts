@@ -10,7 +10,7 @@ import {
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { JwtAuthGuard } from './guard/jwt-auth.guard.js';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import type { Response } from 'express';
 import type { AuthenticatedRequestDto } from './dto/authenticated-request.dto.js';
 

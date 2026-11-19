@@ -42,8 +42,18 @@ export async function seedUsers(prisma: PrismaClient) {
         role: 'EMPLOYEE',
       },
       {
-        email: 'staff@gmail.com',
-        name: 'Test Staff',
+        email: 'staff1@gmail.com',
+        name: 'John Staff',
+        role: 'STAFF',
+      },
+      {
+        email: 'staff2@gmail.com',
+        name: 'Jennie Staff',
+        role: 'STAFF',
+      },
+      {
+        email: 'staff3@gmail.com',
+        name: 'Jin Staff',
         role: 'STAFF',
       },
       {

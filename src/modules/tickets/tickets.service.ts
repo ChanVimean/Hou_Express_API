@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto.js';
@@ -9,18 +9,40 @@ import {
   TicketStatus,
 } from '../../generated/prisma/client.js';
 import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js';
+import { UserRoles } from '../../common/constants/role.constants.js';
 
 @Injectable()
 export class TicketsService {
   constructor(private prisma: PrismaService) {}
 
   // --- Paginated Get All ---
-  async findAllTickets(query: GetTicketsQueryDto) {
+  async findAllTickets(query: GetTicketsQueryDto, user: AuthenticatedUser) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
     const where: Prisma.TicketWhereInput = {};
+
+    // Access control based on role
+    switch (user.role) {
+      case UserRoles.STAFF:
+        // Staff can only view tickets they submitted
+        where.requestedBy = user.userId;
+        break;
+
+      case UserRoles.SUPERVISOR:
+      case UserRoles.DEPARTMENT_MANAGER:
+      case UserRoles.CEO:
+      case UserRoles.ADMIN:
+        // Higher roles can view all tickets
+        break;
+
+      default:
+        throw new ForbiddenException(
+          'You do not have permission to view tickets',
+        );
+    }
 
     // Filter by status
     if (query.status) where.status = query.status;
@@ -28,31 +50,42 @@ export class TicketsService {
     // Filter by priority
     if (query.priority) where.priority = query.priority;
 
-    // Search tickets
+    // Search
     if (query.search?.trim()) {
       const search = query.search.trim();
 
       where.OR = [
-        { ticketNumber: { contains: search } },
-        { description: { contains: search } },
+        {
+          ticketNumber: {
+            contains: search,
+          },
+        },
+        {
+          description: {
+            contains: search,
+          },
+        },
         {
           requester: {
             is: {
-              name: { contains: search },
+              name: {
+                contains: search,
+              },
             },
           },
         },
         {
           category: {
             is: {
-              name: { contains: search },
+              name: {
+                contains: search,
+              },
             },
           },
         },
       ];
     }
 
-    // Run query and total count in parallel
     const [tickets, total] = await Promise.all([
       this.prisma.ticket.findMany({
         where,
@@ -68,8 +101,11 @@ export class TicketsService {
           },
           payment: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
       }),
+
       this.prisma.ticket.count({ where }),
     ]);
 
