@@ -1,4 +1,10 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  NotImplementedException,
+} from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { UpdateTicketStatusDto } from './dto/update-ticket-status.dto.js';
@@ -11,12 +17,13 @@ import {
 import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js';
 import { UserRoles } from '../../common/constants/role.constants.js';
+import { TicketActionDto } from './dto/ticket-action-dto.js';
 
 @Injectable()
 export class TicketsService {
   constructor(private prisma: PrismaService) {}
 
-  // --- Paginated Get All ---
+  // --- Paginated Get All Tickets ---
   async findAllTickets(query: GetTicketsQueryDto, user: AuthenticatedUser) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
@@ -163,11 +170,77 @@ export class TicketsService {
     return { message: `Update status shell stub for ticket ${id}` };
   }
 
-  // --- Finna all Category ---
+  // --- Find all Category ---
   async findAllCategory() {
     return this.prisma.ticketCategory.findMany({
       where: { isActive: true },
       orderBy: { name: 'asc' },
     });
+  }
+
+  // --- Approve status ---
+  async approveTicket(
+    ticketId: number,
+    dto: TicketActionDto,
+    user: AuthenticatedUser,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) throw new NotFoundException('Ticket not found');
+
+      if (ticket.status !== TicketStatus.PENDING)
+        throw new ConflictException('Only pending tickets can be approved');
+
+      const updated = await tx.ticket.updateMany({
+        where: {
+          id: ticketId,
+          status: TicketStatus.PENDING,
+        },
+        data: {
+          status: TicketStatus.APPROVED,
+        },
+      });
+
+      if (updated.count === 0)
+        throw new ConflictException(
+          'Ticket status has changed. Please refresh and try again.',
+        );
+
+      await tx.ticketStatusHistory.create({
+        data: {
+          ticketId,
+          action: TicketHistoryAction.APPROVED,
+          actionBy: user.userId,
+          comment: dto.comment?.trim() || null,
+        },
+      });
+
+      return tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+    });
+  }
+
+  // --- Reject status ---
+  async rejectTicket(
+    ticketId: number,
+    dto: TicketActionDto,
+    user: AuthenticatedUser,
+  ) {
+    // TODO: Implement rejection logic
+    throw new NotImplementedException();
+  }
+
+  // --- Pendnig status ---
+  async pendingTicket(
+    ticketId: number,
+    dto: TicketActionDto,
+    user: AuthenticatedUser,
+  ) {
+    // TODO: Implement pending logic
+    throw new NotImplementedException();
   }
 }
