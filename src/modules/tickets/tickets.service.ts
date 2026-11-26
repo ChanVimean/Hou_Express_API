@@ -130,11 +130,35 @@ export class TicketsService {
 
   // --- Create new ticket ---
   async createTicket(dto: CreateTicketDto) {
-    // 1. Generate a unique human-readable ticket number
-    const ticketNumber = `TICK-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-
-    // 2. Run ticket creation and initial history log inside a transaction
     return await this.prisma.$transaction(async (tx) => {
+      const year = new Date().getFullYear();
+      const prefix = `TICK-${year}-`;
+
+      // Find existing ticket numbers for the current year
+      const existingTickets = await tx.ticket.findMany({
+        where: {
+          ticketNumber: {
+            startsWith: prefix,
+          },
+        },
+        select: {
+          ticketNumber: true,
+        },
+      });
+
+      // Find the highest existing sequence number
+      const highestSequence = existingTickets.reduce((highest, ticket) => {
+        const match = ticket.ticketNumber.match(/^TICK-\d{4}-(\d+)$/);
+
+        if (!match) return highest;
+
+        return Math.max(highest, Number(match[1]));
+      }, 0);
+
+      const nextSequence = highestSequence + 1;
+      const ticketNumber = `${prefix}${String(nextSequence).padStart(3, '0')}`;
+
+      // Create ticket
       const ticket = await tx.ticket.create({
         data: {
           ticketNumber,
@@ -148,7 +172,7 @@ export class TicketsService {
         },
       });
 
-      // Record the initial submission in status history
+      // Record initial submission in status history
       await tx.ticketStatusHistory.create({
         data: {
           ticketId: ticket.id,
@@ -225,7 +249,6 @@ export class TicketsService {
     });
   }
 
-  // --- Reject status ---
   // --- Reject status ---
   async rejectTicket(
     ticketId: number,

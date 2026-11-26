@@ -17,9 +17,9 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { RolesGuard } from '../../common/guards/role.guard.js';
 import { Roles } from '../../common/decorators/role.decorator.js';
 import { UserRoles } from '../../common/constants/role.constants.js';
+import { TicketActionDto } from './dto/ticket-action-dto.js';
+import { GetActionHistoryQueryDto } from './dto/get-action-history-query.dto.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js';
-import type { TicketActionDto } from './dto/ticket-action-dto.js';
-import type { GetActionHistoryQueryDto } from './dto/get-action-history-query.dto.js';
 
 @Controller('ticket')
 export class TicketsController {
