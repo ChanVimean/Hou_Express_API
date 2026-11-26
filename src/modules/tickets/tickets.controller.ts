@@ -19,6 +19,7 @@ import { Roles } from '../../common/decorators/role.decorator.js';
 import { UserRoles } from '../../common/constants/role.constants.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js';
 import type { TicketActionDto } from './dto/ticket-action-dto.js';
+import type { GetActionHistoryQueryDto } from './dto/get-action-history-query.dto.js';
 
 @Controller('ticket')
 export class TicketsController {
@@ -43,6 +44,21 @@ export class TicketsController {
   @Get('category')
   async findAllCategory() {
     return this.ticketService.findAllCategory();
+  }
+
+  @Get('metrics')
+  @UseGuards(JwtAuthGuard)
+  async getTicketMetrics(@CurrentUser() user: AuthenticatedUser) {
+    return this.ticketService.getTicketMetrics(user);
+  }
+
+  @Get('action/history')
+  @UseGuards(JwtAuthGuard)
+  async getActionHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: GetActionHistoryQueryDto,
+  ) {
+    return this.ticketService.getActionHistory(query, user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -1,9 +1,9 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
-  NotImplementedException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
@@ -18,6 +18,7 @@ import { GetTicketsQueryDto } from './dto/get-tickets-query.dto.js';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type.js';
 import { UserRoles } from '../../common/constants/role.constants.js';
 import { TicketActionDto } from './dto/ticket-action-dto.js';
+import { GetActionHistoryQueryDto } from './dto/get-action-history-query.dto.js';
 
 @Injectable()
 export class TicketsService {
@@ -225,22 +226,231 @@ export class TicketsService {
   }
 
   // --- Reject status ---
+  // --- Reject status ---
   async rejectTicket(
     ticketId: number,
     dto: TicketActionDto,
     user: AuthenticatedUser,
   ) {
-    // TODO: Implement rejection logic
-    throw new NotImplementedException();
+    // Comment is required when rejecting
+    const comment = dto.comment?.trim();
+
+    if (!comment)
+      throw new BadRequestException(
+        'A comment is required when rejecting a ticket',
+      );
+
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) throw new NotFoundException('Ticket not found');
+
+      if (ticket.status !== TicketStatus.PENDING)
+        throw new ConflictException('Only pending tickets can be rejected');
+
+      const updated = await tx.ticket.updateMany({
+        where: {
+          id: ticketId,
+          status: TicketStatus.PENDING,
+        },
+        data: {
+          status: TicketStatus.REJECTED,
+        },
+      });
+
+      if (updated.count === 0)
+        throw new ConflictException(
+          'Ticket status has changed. Please refresh and try again.',
+        );
+
+      await tx.ticketStatusHistory.create({
+        data: {
+          ticketId,
+          action: TicketHistoryAction.REJECTED,
+          actionBy: user.userId,
+          comment,
+        },
+      });
+
+      return tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+    });
   }
 
-  // --- Pendnig status ---
+  // --- Mark ticket as Pending / On Hold ---
   async pendingTicket(
     ticketId: number,
     dto: TicketActionDto,
     user: AuthenticatedUser,
   ) {
-    // TODO: Implement pending logic
-    throw new NotImplementedException();
+    // Comment is required when marking pending
+    const comment = dto.comment?.trim();
+
+    if (!comment)
+      throw new BadRequestException(
+        'A comment is required when marking a ticket as pending',
+      );
+
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) throw new NotFoundException('Ticket not found');
+
+      if (ticket.status !== TicketStatus.PENDING)
+        throw new ConflictException(
+          'Only pending tickets can be marked as pending',
+        );
+
+      // Only create history; ticket status does NOT change
+      await tx.ticketStatusHistory.create({
+        data: {
+          ticketId,
+          action: TicketHistoryAction.PENDING,
+          actionBy: user.userId,
+          comment,
+        },
+      });
+
+      return tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+    });
+  }
+
+  async getTicketMetrics(user: AuthenticatedUser) {
+    const where: Prisma.TicketWhereInput = {};
+
+    // Staff can only see metrics for their own tickets
+    switch (user.role) {
+      case UserRoles.STAFF:
+        where.requestedBy = user.userId;
+        break;
+
+      // These roles can see all tickets
+      case UserRoles.SUPERVISOR:
+      case UserRoles.DEPARTMENT_MANAGER:
+      case UserRoles.CEO:
+      case UserRoles.ADMIN:
+        break;
+
+      default:
+        throw new ForbiddenException(
+          'You do not have permission to view ticket metrics',
+        );
+    }
+
+    const [total, pending, approved, rejected] = await Promise.all([
+      this.prisma.ticket.count({
+        where,
+      }),
+
+      this.prisma.ticket.count({
+        where: {
+          ...where,
+          status: TicketStatus.PENDING,
+        },
+      }),
+
+      this.prisma.ticket.count({
+        where: {
+          ...where,
+          status: TicketStatus.APPROVED,
+        },
+      }),
+
+      this.prisma.ticket.count({
+        where: {
+          ...where,
+          status: TicketStatus.REJECTED,
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      pending,
+      approved,
+      rejected,
+    };
+  }
+
+  async getActionHistory(
+    query: GetActionHistoryQueryDto,
+    user: AuthenticatedUser,
+  ) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.TicketStatusHistoryWhereInput = {
+      action: {
+        in: [
+          TicketHistoryAction.PENDING,
+          TicketHistoryAction.APPROVED,
+          TicketHistoryAction.REJECTED,
+        ],
+      },
+    };
+
+    // Access control
+    switch (user.role) {
+      case UserRoles.STAFF:
+        where.ticket = {
+          requestedBy: user.userId,
+        };
+        break;
+
+      case UserRoles.SUPERVISOR:
+      case UserRoles.DEPARTMENT_MANAGER:
+      case UserRoles.CEO:
+      case UserRoles.ADMIN:
+        break;
+
+      default:
+        throw new ForbiddenException(
+          'You do not have permission to view action history',
+        );
+    }
+
+    const [history, total] = await Promise.all([
+      this.prisma.ticketStatusHistory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          ticket: {
+            include: {
+              category: true,
+              requester: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+
+      this.prisma.ticketStatusHistory.count({ where }),
+    ]);
+
+    return {
+      data: history,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
