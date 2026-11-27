@@ -61,8 +61,10 @@ src/
 ├── prisma/
 │   ├── migration/
 │   ├── schema/
-│   │   ├── schema/
-│   │   └── enum/
+│   │   ├── models/
+│   │   └── enums/
+│   ├── seeders/
+│   │   └── seed.ts
 │   └── schema.prisma
 │
 ├──prisma.config.ts
