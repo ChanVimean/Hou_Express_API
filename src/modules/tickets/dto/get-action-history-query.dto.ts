@@ -1,5 +1,6 @@
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { TicketHistoryAction } from '../../../generated/prisma/browser.js';
 
 export class GetActionHistoryQueryDto {
   @IsOptional()
@@ -14,4 +15,8 @@ export class GetActionHistoryQueryDto {
   @Min(1)
   @Max(100)
   limit: number = 10;
+
+  @IsOptional()
+  @IsEnum(TicketHistoryAction)
+  action?: TicketHistoryAction;
 }

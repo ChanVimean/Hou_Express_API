@@ -2,6 +2,7 @@ enum TicketStatus {
   PENDING
   APPROVED
   REJECTED
+  SUBMITTED
 }
 
 enum TicketPriority {

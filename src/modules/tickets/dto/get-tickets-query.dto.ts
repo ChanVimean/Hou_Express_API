@@ -1,4 +1,12 @@
-import { IsOptional, IsInt, Min, Max, IsEnum, IsString } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsEnum,
+  IsString,
+  IsNumber,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import {
   TicketStatus,
@@ -26,6 +34,27 @@ export class GetTicketsQueryDto {
   @IsOptional()
   @IsEnum(TicketPriority)
   priority?: TicketPriority;
+
+  // Category filter
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  categoryId?: number;
+
+  // Minimum estimate filter
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  estimateMin?: number;
+
+  // Maximum estimate filter
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  estimateMax?: number;
 
   @IsOptional()
   @IsString()

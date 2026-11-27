@@ -52,11 +52,33 @@ export class TicketsService {
         );
     }
 
-    // Filter by status
-    if (query.status) where.status = query.status;
+    // Open tab: only Submitted or Pending tickets
+    const openStatuses = [TicketStatus.SUBMITTED, TicketStatus.PENDING];
+
+    where.status = query.status
+      ? {
+          in: openStatuses.filter((status) => status === query.status),
+        }
+      : {
+          in: openStatuses,
+        };
 
     // Filter by priority
     if (query.priority) where.priority = query.priority;
+
+    // Filter by category
+    if (query.categoryId) where.categoryId = query.categoryId;
+
+    // Filter by estimate amount
+    if (query.estimateMin !== undefined || query.estimateMax !== undefined)
+      where.estimateAmount = {
+        ...(query.estimateMin !== undefined && {
+          gte: query.estimateMin,
+        }),
+        ...(query.estimateMax !== undefined && {
+          lte: query.estimateMax,
+        }),
+      };
 
     // Search
     if (query.search?.trim()) {
@@ -108,6 +130,7 @@ export class TicketsService {
             },
           },
           payment: true,
+          attachments: true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -410,14 +433,21 @@ export class TicketsService {
     const limit = query.limit ?? 10;
     const skip = (page - 1) * limit;
 
+    // Action history excludes SUBMITTED records
+    const actionStatuses = [
+      TicketHistoryAction.PENDING,
+      TicketHistoryAction.APPROVED,
+      TicketHistoryAction.REJECTED,
+    ];
+
     const where: Prisma.TicketStatusHistoryWhereInput = {
-      action: {
-        in: [
-          TicketHistoryAction.PENDING,
-          TicketHistoryAction.APPROVED,
-          TicketHistoryAction.REJECTED,
-        ],
-      },
+      action: query.action
+        ? {
+            in: actionStatuses.filter((action) => action === query.action),
+          }
+        : {
+            in: actionStatuses,
+          },
     };
 
     // Access control
@@ -432,6 +462,7 @@ export class TicketsService {
       case UserRoles.DEPARTMENT_MANAGER:
       case UserRoles.CEO:
       case UserRoles.ADMIN:
+        // Higher roles can view all action history
         break;
 
       default:
